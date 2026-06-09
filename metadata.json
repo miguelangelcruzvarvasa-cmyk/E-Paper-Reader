@@ -1,0 +1,6 @@
+{
+  "name": "Tinta Papel E-Ink",
+  "description": "Lector inteligente con simulación de pantallas de tinta electrónica. Carga PDFs, lee páginas web y documentos con confort visual ajustable.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
