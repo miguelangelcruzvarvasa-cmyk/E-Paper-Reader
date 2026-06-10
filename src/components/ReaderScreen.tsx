@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Markdown from "react-markdown";
 import { ReaderConfig, ContrastMode, FontFamily } from "../types";
 import { PdfPageRenderer } from "./PdfPageRenderer";
@@ -51,6 +51,11 @@ export default function ReaderScreen({
 }: ReaderScreenProps) {
   const [pdfScale, setPdfScale] = useState(1.3);
   const [showHelperModal, setShowHelperModal] = useState(false);
+
+  // Swipe detection refs (handlers defined after page-turn functions)
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const SWIPE_THRESHOLD = 60;
 
   // Pagination for Text / Web Markdown content
   const charactersPerPage = 1700; // Optimal length per reader sheet
@@ -118,6 +123,24 @@ export default function ReaderScreen({
       if (currentPageIndex < pages.length - 1) {
         onPageTurnEvent();
         onTextPageChange(currentPageIndex + 2);
+      }
+    }
+  };
+
+  // Mobile swipe-to-turn-page handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+      if (deltaX > 0) {
+        handlePrevPage();
+      } else {
+        handleNextPage();
       }
     }
   };
@@ -391,6 +414,8 @@ export default function ReaderScreen({
           {/* Main Paper Sheet */}
           <div 
             id="reader-paper-sheet"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
             className={`w-full ${zenFullscreen ? 'min-h-screen' : 'min-h-[500px] md:min-h-[640px]'} ${zenFullscreen ? 'px-4 sm:px-8 md:px-16 lg:px-24 py-6 md:py-10' : 'p-6 md:p-12'} pb-16 flex flex-col justify-between border relative overflow-y-auto select-text ${selectedContrast.paper} reading-sheet`}
             style={{
               filter: `
@@ -484,36 +509,36 @@ export default function ReaderScreen({
           )}
         </div>
 
-        {/* Page navigator buttons */}
-        <div className="flex justify-between w-full mt-4 select-none px-4 max-w-xl">
+        {/* Page navigator buttons — larger tap targets for mobile */}
+        <div className="flex justify-between w-full mt-4 select-none px-2 sm:px-4 max-w-xl">
           <button
             onClick={handlePrevPage}
             disabled={activePage <= 1}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg border text-sm font-medium transition ${
+            className={`flex items-center gap-1.5 px-5 py-3 sm:px-4 sm:py-2.5 rounded-lg border text-sm font-medium transition min-w-[44px] min-h-[44px] justify-center ${
               activePage <= 1
                 ? "bg-transparent text-neutral-400 border-neutral-300/40 cursor-not-allowed opacity-50"
-                : "bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-300 shadow-sm active:scale-98"
+                : "bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-300 shadow-sm active:scale-95"
             }`}
           >
-            <ChevronLeft className="w-4 h-4" />
-            Anterior
+            <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Anterior</span>
           </button>
 
-          <span className="text-xs text-neutral-500 font-mono flex items-center justify-center">
-            Pág. {activePage} / {totalPages || 1}
+          <span className="text-xs text-neutral-500 font-mono flex items-center justify-center px-2">
+            {activePage}/{totalPages || 1}
           </span>
 
           <button
             onClick={handleNextPage}
             disabled={activePage >= totalPages}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg border text-sm font-medium transition ${
+            className={`flex items-center gap-1.5 px-5 py-3 sm:px-4 sm:py-2.5 rounded-lg border text-sm font-medium transition min-w-[44px] min-h-[44px] justify-center ${
               activePage >= totalPages
                 ? "bg-transparent text-neutral-400 border-neutral-300/40 cursor-not-allowed opacity-50"
-                : "bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-300 shadow-sm active:scale-98"
+                : "bg-white hover:bg-neutral-50 text-neutral-700 border-neutral-300 shadow-sm active:scale-95"
             }`}
           >
-            Siguiente
-            <ChevronRight className="w-4 h-4" />
+            <span className="hidden sm:inline">Siguiente</span>
+            <ChevronRight className="w-5 h-5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>

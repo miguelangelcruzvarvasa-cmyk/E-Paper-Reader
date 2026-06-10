@@ -635,7 +635,7 @@ export default function App() {
 
       {/* Floating toolbar in fullscreen mode — quick controls without leaving reading */}
       {zenFullscreen && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-0.5 bg-neutral-900/75 backdrop-blur-md rounded-full px-2 py-1.5 border border-neutral-800/50 shadow-2xl">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-0.5 bg-neutral-900/80 backdrop-blur-md rounded-full px-2 py-1.5 border border-neutral-800/50 shadow-2xl touch-manipulation">
           {/* Mode tabs */}
           <button
             onClick={() => { setActiveInputMode("paste"); setSourceTitle("Borrador de Lectura Libre"); triggerRefreshFlash(); }}
