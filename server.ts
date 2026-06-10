@@ -8,6 +8,25 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// ── In-memory user-provided API keys (set via /api/set-keys) ──
+const userKeys: Record<string, string> = {};
+
+function getApiKey(provider: AIProvider): string {
+  // 1. User-provided key (via UI)
+  if (userKeys[provider]) return userKeys[provider];
+  // 2. Environment variable
+  const envMap: Record<AIProvider, string | undefined> = {
+    gemini: process.env.GEMINI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    deepseek: process.env.DEEPSEEK_API_KEY,
+  };
+  return envMap[provider] || "";
+}
+
+function isProviderAvailable(provider: AIProvider): boolean {
+  return !!getApiKey(provider);
+}
+
 // ── AI Provider types ──
 type AIProvider = "gemini" | "groq" | "deepseek";
 
@@ -58,8 +77,8 @@ async function callAI(params: {
   const { provider, model, prompt, systemInstruction } = params;
 
   if (provider === "gemini") {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY no configurada en .env");
+    const apiKey = getApiKey("gemini");
+    if (!apiKey) throw new Error("GEMINI_API_KEY no configurada. Usa el panel de configuración para agregar tu clave.");
     const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
     const res = await ai.models.generateContent({
       model,
@@ -70,8 +89,8 @@ async function callAI(params: {
   }
 
   if (provider === "groq") {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error("GROQ_API_KEY no configurada en .env");
+    const apiKey = getApiKey("groq");
+    if (!apiKey) throw new Error("GROQ_API_KEY no configurada. Usa el panel de configuración para agregar tu clave.");
     const groq = new Groq({ apiKey });
     const messages: any[] = [{ role: "user", content: prompt }];
     if (systemInstruction) messages.unshift({ role: "system", content: systemInstruction });
@@ -85,8 +104,8 @@ async function callAI(params: {
   }
 
   if (provider === "deepseek") {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("DEEPSEEK_API_KEY no configurada en .env");
+    const apiKey = getApiKey("deepseek");
+    if (!apiKey) throw new Error("DEEPSEEK_API_KEY no configurada. Usa el panel de configuración para agregar tu clave.");
     const deepseek = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
     const messages: any[] = [{ role: "user", content: prompt }];
     if (systemInstruction) messages.unshift({ role: "system", content: systemInstruction });
@@ -288,6 +307,34 @@ ${truncatedHtml}`;
         error: `Error al acceder al sitio web: ${err.message || err}. Asegúrate de que el enlace sea correcto y permita accesos externos.`,
       });
     }
+  });
+
+  // ── API Key Management ──
+
+  // Get status of all providers (which have keys configured)
+  app.get("/api/status", (_req, res) => {
+    const providers: AIProvider[] = ["gemini", "groq", "deepseek"];
+    const status = providers.map(p => ({
+      provider: p,
+      available: isProviderAvailable(p),
+      source: userKeys[p] ? "user" : (process.env[`${p.toUpperCase()}_API_KEY`] ? "env" : "none"),
+    }));
+    return res.json({ providers: status, activeProvider: getActiveProvider() });
+  });
+
+  // Set user-provided API key
+  app.post("/api/set-keys", (req, res) => {
+    const { provider, apiKey } = req.body;
+    if (!provider || !apiKey) {
+      return res.status(400).json({ error: "Falta provider o apiKey." });
+    }
+    const validProviders: AIProvider[] = ["gemini", "groq", "deepseek"];
+    if (!validProviders.includes(provider)) {
+      return res.status(400).json({ error: `Provider no válido: ${provider}. Usa: gemini, groq, deepseek.` });
+    }
+    userKeys[provider] = apiKey.trim();
+    console.log(`[E-Ink] Clave API configurada para ${provider} por el usuario.`);
+    return res.json({ success: true, provider, available: true });
   });
 
   // AI Assist: summarize / simplify / explain

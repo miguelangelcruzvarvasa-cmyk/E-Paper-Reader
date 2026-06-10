@@ -231,6 +231,37 @@ export default function App() {
     return "llama-3.3-70b-versatile";
   });
 
+  // API Key management
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [apiStatus, setApiStatus] = useState<Array<{ provider: string; available: boolean; source: string }>>([]);
+  const [tempKeys, setTempKeys] = useState<Record<string, string>>({ groq: "", gemini: "", deepseek: "" });
+
+  const fetchApiStatus = async () => {
+    try {
+      const res = await fetch("/api/status");
+      const data = await res.json();
+      setApiStatus(data.providers || []);
+    } catch {}
+  };
+
+  useEffect(() => { fetchApiStatus(); }, []);
+
+  const handleSaveApiKey = async (provider: string) => {
+    const key = tempKeys[provider]?.trim();
+    if (!key) return;
+    try {
+      const res = await fetch("/api/set-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey: key }),
+      });
+      if (res.ok) {
+        setTempKeys(prev => ({ ...prev, [provider]: "" }));
+        fetchApiStatus();
+      }
+    } catch {}
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Save changes reactively to localStorage
@@ -971,6 +1002,16 @@ export default function App() {
                 >
                   <BrainCircuit className="w-3.5 h-3.5 text-neutral-700" />
                   ASISTENTE DE CONSULTA IA
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowApiKeyModal(true); fetchApiStatus(); }}
+                    className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full border border-neutral-300 hover:bg-neutral-100 transition"
+                    title="Configurar claves API"
+                  >
+                    🔑
+                    {apiStatus.filter(s => s.available).length > 0 && (
+                      <span className="ml-0.5 text-emerald-500">✓</span>
+                    )}
+                  </button>
                 </button>
               </div>
 
@@ -1211,6 +1252,72 @@ export default function App() {
         <div className="fixed bottom-6 right-6 z-50 bg-neutral-900 border border-neutral-700 text-white rounded-xl px-4 py-3 text-xs font-semibold shadow-2xl flex items-center gap-2.5 animate-bounce select-none">
           <span className="text-emerald-400">✓</span>
           <span>{noteSuccessToast}</span>
+        </div>
+      )}
+
+      {/* API KEY CONFIGURATION MODAL */}
+      {showApiKeyModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-neutral-200 relative">
+            <div className="flex items-center justify-between mb-4 border-b pb-3">
+              <h3 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+                🔑 Configurar APIs de IA
+              </h3>
+              <button
+                onClick={() => setShowApiKeyModal(false)}
+                className="text-neutral-400 hover:text-neutral-800 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-[11px] text-neutral-500 mb-4">
+              Pega tus claves API aquí. Se guardan solo en memoria del servidor durante esta sesión.
+              Para uso permanente, configura las variables de entorno en tu hosting.
+            </p>
+
+            {(["groq", "gemini", "deepseek"] as const).map(provider => {
+              const status = apiStatus.find(s => s.provider === provider);
+              const label = provider === "groq" ? "Groq (Llama, Mixtral, Gemma)" : provider === "gemini" ? "Google Gemini" : "DeepSeek (V3, R1)";
+              const placeholder = provider === "groq" ? "gsk_..." : provider === "gemini" ? "AIza..." : "sk-...";
+
+              return (
+                <div key={provider} className="mb-3 pb-3 border-b border-neutral-100 last:border-0">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-semibold text-neutral-700">{label}</span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
+                      status?.available ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-500'
+                    }`}>
+                      {status?.available ? `✓ ${status.source === 'env' ? '.env' : 'usuario'}` : '✗ Sin clave'}
+                    </span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="password"
+                      value={tempKeys[provider] || ""}
+                      onChange={(e) => setTempKeys(prev => ({ ...prev, [provider]: e.target.value }))}
+                      placeholder={placeholder}
+                      className="flex-1 p-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-neutral-700 font-mono"
+                    />
+                    <button
+                      onClick={() => handleSaveApiKey(provider)}
+                      disabled={!tempKeys[provider]?.trim()}
+                      className="px-3 py-2 bg-neutral-900 text-white hover:bg-neutral-800 disabled:bg-neutral-300 rounded-lg text-xs font-bold transition shrink-0"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              onClick={() => setShowApiKeyModal(false)}
+              className="mt-3 w-full py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg font-medium text-xs transition"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       )}
 
