@@ -11,7 +11,11 @@ import {
   HelpCircle,
   CornerDownRight,
   BrainCircuit,
-  EyeOff
+  EyeOff,
+  Settings,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { ReaderConfig, InputMode } from "./types";
 import Sidebar from "./components/Sidebar";
@@ -65,7 +69,8 @@ export default function App() {
           paperGrainActive: true,
           ditheringActive: true,
           ghostingLevel: 4,
-          bezelModeActive: true,
+          bezelModeActive: false,
+          blueLightFilter: 80,
           textAlignment: "justify",
           refreshRate: 3,
           ...parsed,
@@ -84,7 +89,8 @@ export default function App() {
       paperGrainActive: true,
       ditheringActive: true,
       ghostingLevel: 4,
-      bezelModeActive: true,
+      bezelModeActive: false,
+      blueLightFilter: 80,
       textAlignment: "justify",
       refreshRate: 3,
     };
@@ -201,9 +207,28 @@ export default function App() {
   const [zenFullscreen, setZenFullscreen] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem("EINK_ZEN_FULLSCREEN");
-      return saved === "true";
+      if (saved !== null) return saved === "true";
     } catch {}
-    return false;
+    return true;
+  });
+
+  const [showLoader, setShowLoader] = useState(false);
+  const [showNotebook, setShowNotebook] = useState(false);
+
+  // AI Provider & Model selection
+  const [aiProvider, setAiProvider] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("EINK_AI_PROVIDER");
+      if (saved) return saved;
+    } catch {}
+    return "groq";
+  });
+  const [aiModel, setAiModel] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem("EINK_AI_MODEL");
+      if (saved) return saved;
+    } catch {}
+    return "llama-3.3-70b-versatile";
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -223,6 +248,8 @@ export default function App() {
       localStorage.setItem("EINK_SOURCE_TITLE", sourceTitle);
       localStorage.setItem("EINK_STUDY_NOTES", JSON.stringify(studyNotes));
       localStorage.setItem("EINK_ZEN_FULLSCREEN", zenFullscreen ? "true" : "false");
+      localStorage.setItem("EINK_AI_PROVIDER", aiProvider);
+      localStorage.setItem("EINK_AI_MODEL", aiModel);
     } catch (err) {
       console.warn("Failed syncing state with localStorage:", err);
     }
@@ -239,6 +266,8 @@ export default function App() {
     sourceTitle,
     studyNotes,
     zenFullscreen,
+    aiProvider,
+    aiModel,
   ]);
 
   // Smart AI Help Desk state (bottom notes widget)
@@ -343,7 +372,7 @@ export default function App() {
           const response = await fetch("/api/fetch-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: urlParam, useAi: true })
+            body: JSON.stringify({ url: urlParam, useAi: true, provider: aiProvider, model: aiModel })
           });
           const data = await response.json();
           if (!response.ok) {
@@ -451,7 +480,7 @@ export default function App() {
       const response = await fetch("/api/fetch-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: webUrl, useAi: useAiExtraction })
+        body: JSON.stringify({ url: webUrl, useAi: useAiExtraction, provider: aiProvider, model: aiModel })
       });
 
       const data = await response.json();
@@ -532,10 +561,10 @@ export default function App() {
     setAiAssistantText("");
 
     try {
-      const response = await fetch("/api/gemini/assist", {
+      const response = await fetch("/api/ai/assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: textToProcess, type })
+        body: JSON.stringify({ text: textToProcess, type, provider: aiProvider, model: aiModel })
       });
 
       const data = await response.json();
@@ -598,55 +627,149 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans select-none relative">
+    <div className={`h-full flex flex-col font-sans select-none relative transition-colors duration-700 ${zenFullscreen ? 'bg-[#1c1d1f]' : 'bg-slate-50'}`}>
       {/* Absolute screen flash animation for refreshing paper trace */}
       {refreshFlash && (
         <div className="fixed inset-0 z-[100] pointer-events-none animate-eink-flash" />
       )}
 
-      {/* Primary header branding */}
+      {/* Floating toolbar in fullscreen mode — quick controls without leaving reading */}
+      {zenFullscreen && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-0.5 bg-neutral-900/75 backdrop-blur-md rounded-full px-2 py-1.5 border border-neutral-800/50 shadow-2xl">
+          {/* Mode tabs */}
+          <button
+            onClick={() => { setActiveInputMode("paste"); setSourceTitle("Borrador de Lectura Libre"); triggerRefreshFlash(); }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition ${activeInputMode === "paste" ? "bg-white text-neutral-900" : "text-neutral-400 hover:text-white"}`}
+            title="Notas / Texto"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setActiveInputMode("web"); setSourceTitle(webUrl ? "Lectura Web" : "Enlace Web"); triggerRefreshFlash(); }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition ${activeInputMode === "web" ? "bg-white text-neutral-900" : "text-neutral-400 hover:text-white"}`}
+            title="Web"
+          >
+            <Globe className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setActiveInputMode("pdf"); setSourceTitle(lastUploadedFileName || "Documento PDF"); triggerRefreshFlash(); }}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition ${activeInputMode === "pdf" ? "bg-white text-neutral-900" : "text-neutral-400 hover:text-white"}`}
+            title="PDF"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+
+          <div className="w-px h-5 bg-neutral-700 mx-1" />
+
+          {/* Contrast cycle */}
+          <button
+            onClick={() => {
+              const modes: Array<ReaderConfig["contrastMode"]> = ["paper-white", "warm-sepia", "cool-grey", "dark-ink"];
+              const idx = modes.indexOf(config.contrastMode);
+              handleConfigChange({ contrastMode: modes[(idx + 1) % modes.length] });
+            }}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            title="Cambiar tipo de papel"
+          >
+            <span className="text-xs">
+              {config.contrastMode === "paper-white" ? "☀️" : config.contrastMode === "warm-sepia" ? "🟤" : config.contrastMode === "cool-grey" ? "🩶" : "🌙"}
+            </span>
+          </button>
+
+          {/* Font size */}
+          <button
+            onClick={() => handleConfigChange({ fontSize: Math.max(12, config.fontSize - 2) })}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            title="Reducir letra"
+          >
+            A⁻
+          </button>
+          <button
+            onClick={() => handleConfigChange({ fontSize: Math.min(36, config.fontSize + 2) })}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            title="Aumentar letra"
+          >
+            A⁺
+          </button>
+
+          <div className="w-px h-5 bg-neutral-700 mx-1" />
+
+          {/* Refresh */}
+          <button
+            onClick={triggerRefreshFlash}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+            title="Refrescar pantalla"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+
+          {/* Exit fullscreen — open full panel */}
+          <button
+            onClick={() => setZenFullscreen(false)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm text-neutral-400 hover:text-white hover:bg-neutral-800 transition ml-1"
+            title="Abrir panel completo"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Floating fullscreen button (only in normal mode) */}
       {!zenFullscreen && (
-        <header className="bg-neutral-900 text-white px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md select-none animate-in fade-in duration-200">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center border border-neutral-700 shadow-sm shrink-0">
-              <BookOpen className="w-5 h-5 text-neutral-900 fill-neutral-900" />
+        <button
+          onClick={() => setZenFullscreen(true)}
+          className="fixed bottom-4 right-4 z-[90] w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 border bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-100"
+          title="Pantalla completa"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Primary header — compact bar */}
+      {!zenFullscreen && (
+        <header className="bg-neutral-900 text-white px-4 py-2 flex flex-row items-center justify-between gap-3 shadow-md select-none shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-md bg-white flex items-center justify-center border border-neutral-700 shadow-sm shrink-0">
+              <BookOpen className="w-4 h-4 text-neutral-900 fill-neutral-900" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-bold tracking-tight text-base sm:text-lg">Tinta Papel E-Ink App</h1>
-                <span className="text-[10px] bg-neutral-800 text-orange-200 border border-neutral-700 px-1.5 py-0.5 rounded-full font-mono">Simulador</span>
-              </div>
-              <p className="text-xs text-neutral-400">Reduce la estenopía y fatiga visual al leer libros y páginas webs.</p>
-            </div>
+            <h1 className="font-bold tracking-tight text-sm whitespace-nowrap">Tinta Papel E-Ink</h1>
           </div>
 
-          {/* Dynamic active document selector tabs (Kindle UI style) */}
-          <div className="flex bg-neutral-800 rounded-lg p-1 border border-neutral-700 text-xs self-start sm:self-center">
+          {/* Document selector tabs */}
+          <div className="flex bg-neutral-800 rounded-lg p-0.5 border border-neutral-700 text-[11px]">
             <button
-              onClick={() => { setActiveInputMode("paste"); setSourceTitle("Borrador de Lectura Libre"); triggerRefreshFlash(); }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium transition ${
+              onClick={() => { setActiveInputMode("paste"); setSourceTitle("Borrador de Lectura Libre"); triggerRefreshFlash(); setShowLoader(true); }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition whitespace-nowrap ${
                 activeInputMode === "paste" ? "bg-white text-neutral-900 shadow" : "text-neutral-300 hover:text-white"
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" /> Notas Librerías
+              <Edit3 className="w-3 h-3" /> Notas
             </button>
             <button
-              onClick={() => { setActiveInputMode("web"); setSourceTitle(webUrl ? "Lectura Web del Enlace" : "Enlace Web"); triggerRefreshFlash(); }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium transition ${
+              onClick={() => { setActiveInputMode("web"); setSourceTitle(webUrl ? "Lectura Web" : "Enlace Web"); triggerRefreshFlash(); setShowLoader(true); }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition whitespace-nowrap ${
                 activeInputMode === "web" ? "bg-white text-neutral-900 shadow" : "text-neutral-300 hover:text-white"
               }`}
             >
-              <Globe className="w-3.5 h-3.5" /> Navegador Web
+              <Globe className="w-3 h-3" /> Web
             </button>
             <button
-              onClick={() => { setActiveInputMode("pdf"); setSourceTitle(lastUploadedFileName || "Documento PDF"); triggerRefreshFlash(); }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-md font-medium transition ${
+              onClick={() => { setActiveInputMode("pdf"); setSourceTitle(lastUploadedFileName || "Documento PDF"); triggerRefreshFlash(); setShowLoader(true); }}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition whitespace-nowrap ${
                 activeInputMode === "pdf" ? "bg-white text-neutral-900 shadow" : "text-neutral-300 hover:text-white"
               }`}
             >
-              <FileText className="w-3.5 h-3.5" /> Cargar PDF
+              <FileText className="w-3 h-3" /> PDF
             </button>
           </div>
+
+          <button
+            onClick={() => setZenFullscreen(true)}
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition shrink-0"
+            title="Pantalla completa"
+          >
+            <EyeOff className="w-4 h-4" />
+          </button>
         </header>
       )}
 
@@ -663,105 +786,84 @@ export default function App() {
         {/* Reader stage & Loaders panel */}
         <main className="flex-1 flex flex-col bg-[#eef0f3] min-w-0">
           
-          {/* Document Loaders (Collapsible sections depending on selected mode tab) */}
+          {/* Document Loaders — collapsible toggle bar + content */}
           {!zenFullscreen && (
-            <div className="bg-white border-b border-slate-200 p-4 md:p-6 transition-all">
-              <div className="max-w-3xl mx-auto">
+            <div className="bg-white border-b border-slate-200 shrink-0">
+              <button
+                onClick={() => setShowLoader(prev => !prev)}
+                className="w-full flex items-center justify-between px-4 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 transition"
+              >
+                <span className="flex items-center gap-1.5">
+                  {showLoader ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {activeInputMode === "paste" ? "📝 Pegar texto" : activeInputMode === "web" ? "🌐 Cargar desde web" : "📄 Cargar PDF"}
+                </span>
+                <span className="text-[10px] text-neutral-400">{showLoader ? "Ocultar" : "Cambiar contenido"}</span>
+              </button>
+
+              {showLoader && (
+              <div className="px-4 pb-3 max-w-3xl mx-auto">
               
               {/* Tab: Paste content */}
               {activeInputMode === "paste" && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <label className="font-semibold text-neutral-700 flex items-center gap-1">
-                      <Edit3 className="w-4 h-4 text-neutral-500" /> Inserta tus apuntes, notas o libros copiados:
-                    </label>
-                    <span className="text-neutral-400 font-mono">Se paginará automáticamente</span>
-                  </div>
+                <div className="flex flex-col gap-1.5">
                   <textarea
                     value={pastedText}
                     onChange={(e) => setPastedText(e.target.value)}
-                    placeholder="Pon el manuscrito que desees leer con tranquilidad aquí..."
-                    className="w-full h-24 p-3 border border-slate-200 rounded-lg text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-700 font-sans"
+                    placeholder="Pega aquí el texto, notas o libro que deseas leer..."
+                    className="w-full h-20 p-2.5 border border-slate-200 rounded-lg text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-700 font-sans"
                   />
                 </div>
               )}
 
               {/* Tab: URL web crawler */}
               {activeInputMode === "web" && (
-                <form onSubmit={handleFetchUrlSubmit} className="flex flex-col gap-3">
-                  <label className="text-xs font-semibold text-neutral-700 flex items-center gap-1">
-                    <Globe className="w-4 h-4 text-neutral-500" /> Introduce cualquier dirección de internet (Noticias, Wikipedia, Blogs):
-                  </label>
-                  <div className="flex flex-col sm:flex-row gap-2">
+                <form onSubmit={handleFetchUrlSubmit} className="flex flex-col gap-2">
+                  <div className="flex flex-col sm:flex-row gap-1.5">
                     <input
                       type="text"
                       value={webUrl}
                       onChange={(e) => setWebUrl(e.target.value)}
                       placeholder="ejemplo: es.wikipedia.org/wiki/Tinta_electrónica"
-                      className="flex-1 p-2.5 border border-slate-200 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-700"
+                      className="flex-1 p-2 border border-slate-200 rounded-lg text-sm placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-700"
                     />
                     <button
                       type="submit"
                       disabled={loadingWeb || !webUrl}
-                      className="px-6 py-2.5 bg-neutral-900 text-white hover:bg-neutral-800 transition rounded-lg text-sm font-semibold flex items-center justify-center gap-2 disabled:bg-neutral-300 disabled:cursor-not-allowed shrink-0"
+                      className="px-4 py-2 bg-neutral-900 text-white hover:bg-neutral-800 transition rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:bg-neutral-300 disabled:cursor-not-allowed shrink-0"
                     >
-                      {loadingWeb ? (
-                        <>
-                          <Clock className="w-4 h-4 animate-spin" /> Procesando...
-                        </>
-                      ) : (
-                        "Importar Artículo"
-                      )}
+                      {loadingWeb ? <><Clock className="w-3.5 h-3.5 animate-spin" /> Cargando...</> : "Importar"}
                     </button>
                   </div>
 
-                  {/* Gemini AI extraction toggler */}
-                  <div className="flex items-center justify-between sm:justify-start gap-4 text-xs mt-1">
-                    <label className="flex items-center gap-2 text-neutral-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={useAiExtraction}
-                        onChange={(e) => setUseAiExtraction(e.target.checked)}
-                        className="rounded border-neutral-300 accent-neutral-900 h-4 w-4"
-                      />
-                      <span className="flex items-center gap-1 text-neutral-700 font-medium">
-                        Utilizar Inteligencia Artificial (Gemini) <Sparkles className="w-3.5 h-3.5 text-amber-500 inline fill-amber-500 animate-pulse" />
-                      </span>
-                    </label>
-                    <span className="text-[10px] text-neutral-400 sm:ml-auto">
-                      Depura por completo anuncios, comentarios de spam y ruido decorativo
+                  <label className="flex items-center gap-1.5 text-[11px] text-neutral-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useAiExtraction}
+                      onChange={(e) => setUseAiExtraction(e.target.checked)}
+                      className="rounded border-neutral-300 accent-neutral-900 h-3.5 w-3.5"
+                    />
+                    <span className="flex items-center gap-1">
+                      IA Gemini <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" />
                     </span>
-                  </div>
+                  </label>
 
-                  {/* Errors in crawl */}
                   {webError && (
-                    <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="p-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-[11px] flex items-start gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                       <span>{webError}</span>
                     </div>
                   )}
 
-                  {/* Bookmarklet Helper Widget */}
-                  <div className="mt-4 p-4 bg-orange-50/15 rounded-xl border border-neutral-300/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div className="flex flex-col gap-1 max-w-xl">
-                      <span className="text-xs font-semibold text-neutral-800 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Marcador Rápido E-Ink:
-                      </span>
-                      <p className="text-[11px] text-neutral-600 leading-normal">
-                        ¿Estás leyendo un artículo o entrada de blog en tu navegador habitual? <strong>Arrastra el botón de la derecha a tu barra de marcadores/favoritos (Bookmarks Bar).</strong> Cuando visites cualquier sitio web de lectura, haz clic sobre el marcador salvado y se importará inmediatamente aquí en modo de confort visual mate.
-                      </p>
-                    </div>
+                  <div className="p-2.5 bg-orange-50/15 rounded-lg border border-neutral-300/40 flex items-center justify-between gap-3">
+                    <p className="text-[10px] text-neutral-600 leading-tight">
+                      Arrastra el botón a tus marcadores para importar webs con un clic.
+                    </p>
                     <a
                       href={`javascript:(function(){var d=window.location.href;window.open('${typeof window !== "undefined" ? window.location.origin + window.location.pathname : ""}?url='+encodeURIComponent(d),'_blank');})();`}
-                      className="px-4 py-2.5 bg-neutral-900 duration-150 hover:bg-neutral-950 text-white rounded-lg text-xs font-bold whitespace-nowrap shadow select-none cursor-grab active:cursor-grabbing border border-neutral-700/60 flex items-center gap-1.5 transition-all hover:scale-103 shrink-0"
-                      onClick={(e) => {
-                        // Prevent navigation if they click it directly inside our applet rather than dragging
-                        e.preventDefault();
-                        alert("¡No lo cliques! Arrástralo con el ratón directamente hacia tu barra de herramientas/marcadores del navegador para poder usarlo en cualquier web.");
-                      }}
-                      title="Arrastra este botón a tus favoritos"
+                      className="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-950 text-white rounded-lg text-[10px] font-bold whitespace-nowrap shadow cursor-grab shrink-0"
+                      onClick={(e) => { e.preventDefault(); alert("¡Arrástralo a tu barra de marcadores!"); }}
                     >
-                      <span>📖 Formato E-Ink</span>
+                      📖 E-Ink
                     </a>
                   </div>
                 </form>
@@ -769,52 +871,37 @@ export default function App() {
 
               {/* Tab: PDF upload */}
               {activeInputMode === "pdf" && (
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs font-semibold text-neutral-700 flex items-center gap-1 mb-1">
-                    <FileText className="w-4 h-4 text-neutral-500" /> Sube tu archivo PDF para simular una tableta física:
-                  </div>
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition flex flex-col items-center gap-1 ${
+                    isDragOver ? "border-neutral-800 bg-neutral-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                  }`}
+                >
+                  <input ref={fileInputRef} type="file" accept=".pdf" onChange={handleFileChange} className="hidden" />
+                  <FileText className="w-6 h-6 text-neutral-400" />
+                  <p className="text-xs font-medium text-neutral-700">
+                    {lastUploadedFileName ? (
+                      <span className="text-neutral-800 font-bold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-green-600" /> {lastUploadedFileName}</span>
+                    ) : (
+                      "Arrastra tu PDF aquí o haz clic para seleccionar"
+                    )}
+                  </p>
+                </div>
+              )}
 
-                  <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-1.5 ${
-                      isDragOver 
-                        ? "border-neutral-800 bg-neutral-50" 
-                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <FileText className="w-8 h-8 text-neutral-400 stroke-1" />
-                    <p className="text-xs font-medium text-neutral-700">
-                      {lastUploadedFileName ? (
-                        <span className="text-neutral-800 font-bold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 inline text-green-600" /> {lastUploadedFileName}</span>
-                      ) : (
-                        "Arrastra tu libro PDF aquí, o navega los archivos"
-                      )}
-                    </p>
-                    <p className="text-[10px] text-neutral-400">Formato admitido: .pdf (Se mantendrán todas las proporciones e imágenes)</p>
-                  </div>
-
-                  {/* Loading/Error metrics */}
-                  {pdfError && (
-                    <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs flex items-start gap-2 mt-1">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>{pdfError}</span>
-                    </div>
-                  )}
+              {pdfError && (
+                <div className="p-2 bg-red-50 text-red-600 border border-red-200 rounded-lg text-[11px] flex items-start gap-1.5 mt-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>{pdfError}</span>
                 </div>
               )}
 
             </div>
-          </div>
+              )}
+            </div>
           )}
 
           {/* Core reading view area */}
@@ -842,9 +929,21 @@ export default function App() {
             }}
           />
 
-          {/* Intelligent Study Notebook & AI Assistant Floating Dual Panel */}
+          {/* Intelligent Study Notebook & AI Assistant — collapsible */}
           {!zenFullscreen && (
-            <div className="bg-white border-t border-slate-200 shadow-md select-text">
+            <div className="bg-white border-t border-slate-200 shadow-md select-text shrink-0">
+              <button
+                onClick={() => setShowNotebook(prev => !prev)}
+                className="w-full flex items-center justify-between px-4 py-1.5 text-xs text-neutral-500 hover:bg-neutral-50 transition"
+              >
+                <span className="flex items-center gap-1.5">
+                  {showNotebook ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  📖 Cuaderno de Apuntes {studyNotes.length > 0 && `(${studyNotes.length})`} · 🤖 Asistente IA
+                </span>
+                <span className="text-[10px] text-neutral-400">{showNotebook ? "Ocultar" : "Mostrar"}</span>
+              </button>
+
+              {showNotebook && (
             <div className="max-w-3xl mx-auto flex flex-col">
               
               {/* Dual Tab Switcher */}
@@ -971,6 +1070,53 @@ export default function App() {
                         <span className="text-[10px] uppercase font-mono tracking-widest text-neutral-500 font-bold">INTELIGENCIA EMULA E-INK</span>
                         <h4 className="text-xs font-bold text-neutral-700">Análisis y aclaración rápida de lecciones técnicas</h4>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        {/* Provider + Model compact selector */}
+                        <select
+                          value={aiProvider}
+                          onChange={(e) => {
+                            const p = e.target.value;
+                            setAiProvider(p);
+                            localStorage.setItem("EINK_AI_PROVIDER", p);
+                            const defaults: Record<string, string> = { groq: "llama-3.3-70b-versatile", gemini: "gemini-2.0-flash", deepseek: "deepseek-chat" };
+                            const newModel = defaults[p] || "llama-3.3-70b-versatile";
+                            setAiModel(newModel);
+                            localStorage.setItem("EINK_AI_MODEL", newModel);
+                          }}
+                          className="text-[10px] bg-neutral-100 border border-neutral-200 rounded-md px-2 py-1 text-neutral-700 font-medium cursor-pointer"
+                        >
+                          <option value="groq">Groq</option>
+                          <option value="gemini">Gemini</option>
+                          <option value="deepseek">DeepSeek</option>
+                        </select>
+                        <select
+                          value={aiModel}
+                          onChange={(e) => { setAiModel(e.target.value); localStorage.setItem("EINK_AI_MODEL", e.target.value); }}
+                          className="text-[10px] bg-neutral-100 border border-neutral-200 rounded-md px-2 py-1 text-neutral-600 font-mono cursor-pointer max-w-[160px]"
+                        >
+                          {aiProvider === "groq" && (
+                            <>
+                              <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                              <option value="llama-3.1-8b-instant">Llama 3.1 8B</option>
+                              <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                              <option value="gemma2-9b-it">Gemma 2 9B</option>
+                              <option value="deepseek-r1-distill-llama-70b">DeepSeek R1 70B</option>
+                            </>
+                          )}
+                          {aiProvider === "gemini" && (
+                            <>
+                              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                            </>
+                          )}
+                          {aiProvider === "deepseek" && (
+                            <>
+                              <option value="deepseek-chat">DeepSeek V3</option>
+                              <option value="deepseek-reasoner">DeepSeek R1</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
                       <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={() => handleAiAssist("summarize")}
@@ -1020,7 +1166,7 @@ export default function App() {
                     {aiLoading && (
                       <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-lg text-center">
                         <p className="text-xs font-mono font-medium text-slate-500 animate-pulse flex items-center justify-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-spin" /> Procesando palabras con Gemini-3.5-flash...
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500 animate-spin" /> Procesando con {aiModel}...
                         </p>
                       </div>
                     )}
@@ -1054,6 +1200,7 @@ export default function App() {
 
               </div>
             </div>
+              )}
           </div>
           )}
         </main>

@@ -1,40 +1,101 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
+/* Full viewport reading mode */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Safe area for notched phones */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 @theme {
   --font-serif: "Lora", Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
-/* Custom E-Ink transitions & textures */
-@keyframes eink-flash-turn {
-  0% { opacity: 0; }
-  35% { opacity: 0.95; background-color: #000000; }
-  70% { opacity: 0.95; background-color: #ffffff; }
-  85% { opacity: 0.95; background-color: #000000; }
-  100% { opacity: 0; }
+/* E-Ink optimized text rendering — heavier, no subpixel AA */
+.reading-sheet {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
 }
 
-.animate-eink-flash {
-  animation: eink-flash-turn 0.45s cubic-bezier(0.1, 0.8, 0.1, 1) forwards;
+/* Ink-bleed simulation — e-ink particles cluster at edges, making text slightly bolder */
+.reading-sheet h1,
+.reading-sheet h2,
+.reading-sheet h3,
+.reading-sheet h4,
+.reading-sheet h5,
+.reading-sheet h6 {
+  text-shadow: 0 0 0.3px currentColor;
+}
+.reading-sheet p,
+.reading-sheet li,
+.reading-sheet blockquote {
+  text-shadow: 0 0 0.15px currentColor;
 }
 
-/* Micro shadow dither grids */
+/* Kill all animations/transitions inside the reading sheet for static e-ink feel */
+.reading-sheet *,
+.reading-sheet *::before,
+.reading-sheet *::after {
+  transition-duration: 0s !important;
+  animation-duration: 0s !important;
+}
+
+/* Anti-glare matte overlay — simulates diffused ambient reflection */
+.reading-sheet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+  background: 
+    radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(0,0,0,0.02) 0%, transparent 50%);
+  mix-blend-mode: overlay;
+}
+
+/* High-density microcapsule dithering — simulates e-ink particle distribution */
 .grid-dither {
   background-image: 
-    radial-gradient(rgba(0, 0, 0, 0.18) 0.5px, transparent 0.5px),
-    radial-gradient(rgba(0, 0, 0, 0.18) 0.5px, transparent 0.5px);
-  background-size: 2px 2px;
-  background-position: 0 0, 1px 1px;
+    radial-gradient(rgba(0, 0, 0, 0.12) 0.35px, transparent 0.35px),
+    radial-gradient(rgba(0, 0, 0, 0.12) 0.35px, transparent 0.35px),
+    radial-gradient(rgba(0, 0, 0, 0.08) 0.25px, transparent 0.25px);
+  background-size: 1.5px 1.5px, 1.5px 1.5px, 3px 3px;
+  background-position: 0 0, 0.75px 0.75px, 0.15px 0.15px;
 }
 
 .grid-dither-dark {
   background-image: 
-    radial-gradient(rgba(255, 255, 255, 0.08) 0.5px, transparent 0.5px),
-    radial-gradient(rgba(255, 255, 255, 0.08) 0.5px, transparent 0.5px);
-  background-size: 2px 2px;
-  background-position: 0 0, 1px 1px;
+    radial-gradient(rgba(255, 255, 255, 0.06) 0.35px, transparent 0.35px),
+    radial-gradient(rgba(255, 255, 255, 0.06) 0.35px, transparent 0.35px),
+    radial-gradient(rgba(255, 255, 255, 0.04) 0.25px, transparent 0.25px);
+  background-size: 1.5px 1.5px, 1.5px 1.5px, 3px 3px;
+  background-position: 0 0, 0.75px 0.75px, 0.15px 0.15px;
+}
+/* Realistic e-ink waveform flash — slower, multi-phase like real e-paper controllers */
+@keyframes eink-flash-turn {
+  0% { opacity: 0; background-color: transparent; }
+  15% { opacity: 0.6; background-color: #1a1a1a; }
+  40% { opacity: 0.9; background-color: #0a0a0a; }
+  55% { opacity: 0.85; background-color: #f5f5f0; }
+  75% { opacity: 0.5; background-color: #d4d4cc; }
+  90% { opacity: 0.2; background-color: #1a1a1a; }
+  100% { opacity: 0; }
+}
+
+.animate-eink-flash {
+  animation: eink-flash-turn 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
 }
 
 /* Markdown styling inside of reader sheet */

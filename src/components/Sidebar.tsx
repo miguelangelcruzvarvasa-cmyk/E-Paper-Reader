@@ -37,20 +37,20 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
   ];
 
   return (
-    <aside className="w-full md:w-80 bg-white/80 backdrop-blur-md border-r border-[#e2e8f0] p-6 flex flex-col gap-6 select-none shadow-sm shrink-0 overflow-y-auto">
-      <div className="flex items-center gap-2 pb-4 border-b border-[#f1f5f9]">
-        <Settings className="w-5 h-5 text-neutral-600" />
-        <h2 className="font-semibold text-neutral-800 tracking-tight text-lg">Controles de Visión e-Ink</h2>
+    <aside className="w-full md:w-64 bg-white/80 backdrop-blur-md border-r border-[#e2e8f0] p-4 flex flex-col gap-4 select-none shadow-sm shrink-0 overflow-y-auto text-xs">
+      <div className="flex items-center gap-2 pb-3 border-b border-[#f1f5f9]">
+        <Settings className="w-4 h-4 text-neutral-600" />
+        <h2 className="font-semibold text-neutral-800 tracking-tight text-sm">Controles e-Ink</h2>
       </div>
 
       {/* Manual Refresh Action */}
       <button
         onClick={onRefreshTrigger}
         id="refresh-hardware-btn"
-        className="w-full py-3 px-4 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition active:scale-98 flex items-center justify-center gap-2 font-medium text-sm shadow-sm"
+        className="w-full py-2 px-3 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition active:scale-98 flex items-center justify-center gap-1.5 font-medium text-xs shadow-sm"
       >
-        <RefreshCw className="w-4 h-4" />
-        Refrescar Pantalla (Flash)
+        <RefreshCw className="w-3.5 h-3.5" />
+        Refrescar Pantalla
       </button>
 
       {/* Contrast paper type */}
@@ -102,9 +102,9 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
       </div>
 
       {/* Density and sizes */}
-      <div className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-4">
-        <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-          <Sliders className="w-3.5 h-3.5" /> Ajustes de Texto
+      <div className="flex flex-col gap-3 border-t border-[#f1f5f9] pt-3">
+        <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+          <Sliders className="w-3 h-3" /> Ajustes de Texto
         </span>
 
         {/* Size Slider */}
@@ -156,12 +156,30 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
             className="w-full accent-neutral-800 cursor-pointer"
           />
         </div>
+
+        {/* Blue Light Filter */}
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between text-xs text-neutral-600">
+            <span>🌙 Filtro Luz Azul</span>
+            <span className="font-mono font-bold">{config.blueLightFilter}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            value={config.blueLightFilter}
+            onChange={(e) => onChangeConfig({ blueLightFilter: parseInt(e.target.value) })}
+            className="w-full accent-amber-600 cursor-pointer"
+          />
+          <p className="text-[10px] text-neutral-400">Reduce fatiga ocular eliminando luz azul. 80% recomendado.</p>
+        </div>
       </div>
 
       {/* Screen Effects Tuning */}
-      <div className="flex flex-col gap-4 border-t border-[#f1f5f9] pt-4">
-        <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
-          <Sparkles className="w-3.5 h-3.5" /> Simulación de Hardware
+      <div className="flex flex-col gap-3 border-t border-[#f1f5f9] pt-3">
+        <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+          <Sparkles className="w-3 h-3" /> Simulación Hardware
         </span>
 
         {/* Ghosting Amount */}

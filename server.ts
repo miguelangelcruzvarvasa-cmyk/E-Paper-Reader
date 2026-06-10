@@ -2,9 +2,105 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk";
+import OpenAI from "openai";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// ── AI Provider types ──
+type AIProvider = "gemini" | "groq" | "deepseek";
+
+interface AIModel {
+  id: string;
+  name: string;
+  provider: AIProvider;
+}
+
+const AVAILABLE_MODELS: AIModel[] = [
+  // Gemini
+  { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "gemini" },
+  { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite", provider: "gemini" },
+  // Groq
+  { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile", provider: "groq" },
+  { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant", provider: "groq" },
+  { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", provider: "groq" },
+  { id: "gemma2-9b-it", name: "Gemma 2 9B", provider: "groq" },
+  { id: "deepseek-r1-distill-llama-70b", name: "DeepSeek R1 Distill 70B (Groq)", provider: "groq" },
+  // DeepSeek (via DeepSeek API)
+  { id: "deepseek-chat", name: "DeepSeek V3 (Chat)", provider: "deepseek" },
+  { id: "deepseek-reasoner", name: "DeepSeek R1 (Reasoner)", provider: "deepseek" },
+];
+
+function getDefaultModel(provider: AIProvider): string {
+  const defaults: Record<AIProvider, string> = {
+    gemini: "gemini-2.0-flash",
+    groq: "llama-3.3-70b-versatile",
+    deepseek: "deepseek-chat",
+  };
+  return defaults[provider];
+}
+
+function getActiveProvider(): AIProvider {
+  const env = process.env.AI_PROVIDER?.toLowerCase();
+  if (env === "groq") return "groq";
+  if (env === "deepseek") return "deepseek";
+  return "gemini";
+}
+
+// ── Unified AI call ──
+async function callAI(params: {
+  provider: AIProvider;
+  model: string;
+  prompt: string;
+  systemInstruction?: string;
+}): Promise<string> {
+  const { provider, model, prompt, systemInstruction } = params;
+
+  if (provider === "gemini") {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY no configurada en .env");
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { headers: { "User-Agent": "aistudio-build" } } });
+    const res = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: systemInstruction ? { systemInstruction } : undefined,
+    });
+    return res.text || "";
+  }
+
+  if (provider === "groq") {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error("GROQ_API_KEY no configurada en .env");
+    const groq = new Groq({ apiKey });
+    const messages: any[] = [{ role: "user", content: prompt }];
+    if (systemInstruction) messages.unshift({ role: "system", content: systemInstruction });
+    const completion = await groq.chat.completions.create({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: 4096,
+    });
+    return completion.choices[0]?.message?.content || "";
+  }
+
+  if (provider === "deepseek") {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error("DEEPSEEK_API_KEY no configurada en .env");
+    const deepseek = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com" });
+    const messages: any[] = [{ role: "user", content: prompt }];
+    if (systemInstruction) messages.unshift({ role: "system", content: systemInstruction });
+    const completion = await deepseek.chat.completions.create({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: 4096,
+    });
+    return completion.choices[0]?.message?.content || "";
+  }
+
+  throw new Error(`Proveedor IA no soportado: ${provider}`);
+}
 
 // Helper to extract titles from raw html pages
 function getTitleFromPage(html: string, url: string): string {
@@ -106,37 +202,35 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
 
-  // Shared Gemini client setup
-  const apiKey = process.env.GEMINI_API_KEY;
-  let ai: GoogleGenAI | null = null;
-  if (apiKey) {
-    ai = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-  }
+  // ── API Routes ──
 
-  // --- API Routes ---
+  // List available AI models
+  app.get("/api/models", (_req, res) => {
+    const activeProvider = getActiveProvider();
+    const models = AVAILABLE_MODELS.filter(m => m.provider === activeProvider);
+    const allModels = AVAILABLE_MODELS.map(m => ({
+      ...m,
+      active: m.provider === activeProvider,
+    }));
+    return res.json({ provider: activeProvider, models, allModels });
+  });
 
   // Endpoint to fetch web article from link
   app.post("/api/fetch-url", async (req, res) => {
-    const { url, useAi } = req.body;
+    const { url, useAi, provider: reqProvider, model: reqModel } = req.body;
     if (!url) {
       return res.status(400).json({ error: "Por favor proporciona un enlace web válido." });
     }
 
+    const provider: AIProvider = reqProvider || getActiveProvider();
+    const model = reqModel || getDefaultModel(provider);
+
     try {
       const formattedUrl = url.startsWith("http") ? url : `https://${url}`;
-      
-      // Basic URL verification
       new URL(formattedUrl);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
 
       const response = await fetch(formattedUrl, {
         signal: controller.signal,
@@ -156,39 +250,34 @@ async function startServer() {
       const html = await response.text();
       const pageTitle = getTitleFromPage(html, url);
 
-      if (useAi && ai) {
-        // Prepare streamlined HTML for Gemini
+      if (useAi) {
         const preStripped = html
           .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
           .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
           .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, "")
           .replace(/<!--[\s\S]*?-->/g, "");
 
-        // Capture a generous chunk to extract high quality content
         const truncatedHtml = preStripped.slice(0, 60000);
 
         const prompt = `Analiza el siguiente código HTML de un artículo web, blog o lección de curso y extrae ÚNICAMENTE el título principal, subtítulos, autores, fecha y todo el cuerpo útil del contenido estructurado.
 REQUISITOS IMPORTANTES:
 1. Bloques de código: Conserva intactos todos los bloques de código o comandos explicativos (usando sintaxis de Markdown \`\`\`tipo_lenguaje... \`\`\`). No elimines ni resumas el código técnico, ya que es vital para el estudiante.
-2. Imágenes e Ilustraciones Técnicas: Conserva las etiquetas de imágenes útiles que expliquen configuraciones, diagramas o pasos visuales escribiéndolas como enlaces markdown: ![descripción de la imagen o captura](URL_absoluta_de_la_imagen). Asegúrate de resolver las URLs relativas si es posible o mantener las URLs originales del HTML.
+2. Imágenes e Ilustraciones Técnicas: Conserva las etiquetas de imágenes útiles que expliquen configuraciones, diagramas o pasos visuales escribiéndolas como enlaces markdown: ![descripción de la imagen o captura](URL_absoluta_de_la_imagen).
 3. Descarta anuncios publicitarios, videos de spam, barras laterales de widgets, menús de navegación superior y pies de página.
 DEVUELVE EL CONTENIDO EXACTO FORMATEADO ESTRICTAMENTE EN MARKDOWN en español, enfocado en el aprendizaje fluido y alta legibilidad visual.
 
 HTML del sitio web:
 ${truncatedHtml}`;
 
-        const geminiResponse = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction: "Eres un lector web inteligente especializado en e-Ink y educación técnica. Tu misión es limpiar el HTML de cursos o artículos extrayendo un manuscrito hermoso en Markdown. Preservas metódicamente el código técnico completo y las imágenes instruccionales (diagramas de diagramación, pantallazos de configuraciones), dándoles un formato óptimo pero limpio de ruidos de publicidad o marketing."
-          }
+        const markdownText = await callAI({
+          provider,
+          model,
+          prompt,
+          systemInstruction: "Eres un lector web inteligente especializado en e-Ink y educación técnica. Tu misión es limpiar el HTML de cursos o artículos extrayendo un manuscrito hermoso en Markdown. Preservas metódicamente el código técnico completo y las imágenes instruccionales, dándoles un formato óptimo pero limpio de ruidos de publicidad o marketing."
         });
 
-        const markdownText = geminiResponse.text || "No se pudo extraer contenido mediante IA.";
-        return res.json({ markdown: markdownText, title: pageTitle });
+        return res.json({ markdown: markdownText, title: pageTitle, provider, model });
       } else {
-        // Fallback or Fast Mode
         const rawBody = stripHtmlBasic(html);
         const headerMd = `# ${pageTitle}\n\n*Texto extraído directamente de la web (Modo Rápido)*\n\n---\n\n`;
         return res.json({ markdown: headerMd + rawBody, title: pageTitle });
@@ -201,20 +290,20 @@ ${truncatedHtml}`;
     }
   });
 
-  // Smart feature: AI Simplification & Summarizer for highlighted passages
-  app.post("/api/gemini/assist", async (req, res) => {
-    const { text, type } = req.body; // type can be: 'summarize', 'simplify', 'explain'
+  // AI Assist: summarize / simplify / explain
+  app.post("/api/ai/assist", async (req, res) => {
+    const { text, type, provider: reqProvider, model: reqModel } = req.body;
     if (!text) {
       return res.status(400).json({ error: "Falta el texto de lectura." });
     }
-    if (!ai) {
-      return res.status(500).json({ error: "Gemini API no está configurada o disponible." });
-    }
+
+    const provider: AIProvider = reqProvider || getActiveProvider();
+    const model = reqModel || getDefaultModel(provider);
 
     try {
       let prompt = "";
-      let systemDef = "Eres un asistente de lectura de tinta electrónica rápido y simplificado.";
-      
+      let systemDef = "Eres un asistente de lectura de tinta electrónica rápido y simplificado. Responde en español.";
+
       if (type === "summarize") {
         prompt = `Resume el siguiente fragmento en 3 o 4 viñetas cortas, muy claras y fáciles de leer:\n\n"${text}"`;
         systemDef = "Creas resúmenes concisos en español en formato de viñetas claras.";
@@ -226,15 +315,8 @@ ${truncatedHtml}`;
         systemDef = "Das explicaciones breves, sabias y pedagógicas sobre cualquier fragmento de lectura.";
       }
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          systemInstruction: systemDef,
-        }
-      });
-
-      return res.json({ response: response.text });
+      const result = await callAI({ provider, model, prompt, systemInstruction: systemDef });
+      return res.json({ response: result, provider, model });
     } catch (err: any) {
       console.error("Error in AI Assistant:", err);
       return res.status(500).json({ error: `Error en Asistente IA: ${err.message || err}` });

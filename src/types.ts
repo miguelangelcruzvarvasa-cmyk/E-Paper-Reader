@@ -5,16 +5,17 @@ export type FontFamily = "serif-lora" | "sans-inter" | "mono-jetbrains";
 export interface ReaderConfig {
   contrastMode: ContrastMode;
   fontFamily: FontFamily;
-  fontSize: number; // in pixels (e.g., 14 to 32)
-  lineHeight: number; // multiplier (e.g., 1.4 to 2.2)
-  contrastLevel: number; // CSS contrast slider multiplier (0.8 to 1.5)
+  fontSize: number;
+  lineHeight: number;
+  contrastLevel: number;
   grayscaleActive: boolean;
   paperGrainActive: boolean;
   ditheringActive: boolean;
-  ghostingLevel: number; // opacity (0 to 15) for simulated ghosting
-  bezelModeActive: boolean; // physical e-reader shell overlay
+  ghostingLevel: number;
+  bezelModeActive: boolean;
+  blueLightFilter: number; // 0-100, higher = warmer / less blue light
   textAlignment: "left" | "justify";
-  refreshRate: number; // automatically flash refresh every X pages (0 to disable)
+  refreshRate: number;
 }
 
 export type InputMode = "paste" | "web" | "pdf";

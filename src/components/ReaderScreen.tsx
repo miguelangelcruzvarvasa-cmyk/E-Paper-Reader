@@ -315,9 +315,9 @@ export default function ReaderScreen({
   };
 
   return (
-    <div className={`flex-1 flex flex-col p-4 md:p-8 overflow-y-auto transition-colors duration-300 ${selectedContrast.container}`}>
+    <div className={`flex-1 flex flex-col ${zenFullscreen ? 'p-0' : 'p-4 md:p-8'} overflow-hidden transition-colors duration-500 ${selectedContrast.container}`}>
       {/* Upper toolbar */}
-      <div className="max-w-3xl mx-auto w-full flex items-center justify-between gap-4 mb-4 select-none">
+      <div className={`${zenFullscreen ? 'max-w-full px-4 md:px-8' : 'max-w-3xl mx-auto'} w-full flex items-center justify-between gap-4 mb-2 select-none ${zenFullscreen ? 'py-2' : 'mb-4'}`}>
         <div className="flex flex-col min-w-0">
           <p className="text-[10px] uppercase font-mono tracking-widest text-neutral-500 font-bold">LECTOR DIGITAL ACTIVO</p>
           <h1 className="text-sm font-semibold truncate text-neutral-800" title={title || "Sin título"}>
@@ -379,57 +379,70 @@ export default function ReaderScreen({
       </div>
 
       {/* Reader Chassis (Device frame or pure sheet) */}
-      <div className="max-w-3xl mx-auto w-full flex-1 flex flex-col items-center justify-center relative">
+      <div className={`w-full flex-1 flex flex-col items-center justify-center relative ${zenFullscreen ? '' : 'max-w-3xl mx-auto'}`}>
         <div 
           className={`w-full transition-all duration-300 relative ${
             config.bezelModeActive 
               ? "border-[22px] md:border-[32px] border-neutral-800 rounded-[28px] md:rounded-[40px] shadow-2xl relative" 
-              : "border rounded-xl shadow-lg border-neutral-300/40"
+              : zenFullscreen ? "" : "border rounded-xl shadow-lg border-neutral-300/40"
           }`}
           style={{ width: "100%" }}
         >
           {/* Main Paper Sheet */}
           <div 
             id="reader-paper-sheet"
-            className={`w-full min-h-[500px] md:min-h-[640px] p-6 md:p-12 pb-16 flex flex-col justify-between transition-colors duration-300 border relative overflow-hidden select-text ${selectedContrast.paper}`}
+            className={`w-full ${zenFullscreen ? 'min-h-screen' : 'min-h-[500px] md:min-h-[640px]'} ${zenFullscreen ? 'px-4 sm:px-8 md:px-16 lg:px-24 py-6 md:py-10' : 'p-6 md:p-12'} pb-16 flex flex-col justify-between border relative overflow-y-auto select-text ${selectedContrast.paper} reading-sheet`}
             style={{
               filter: `
                 contrast(${config.contrastLevel})
+                brightness(${1.0 - (config.blueLightFilter / 250)})
+                sepia(${config.blueLightFilter / 100 * 0.5})
                 grayscale(${config.grayscaleActive && contentType !== "pdf" ? "100%" : "0%"})
               `
             }}
           >
-            {/* SVG Paper texture layer */}
+            {/* SVG Paper texture layer — coarse cellulose fiber */}
             {config.paperGrainActive && (
               <div 
-                className="absolute inset-0 pointer-events-none opacity-[0.06] mix-blend-multiply z-10" 
+                className="absolute inset-0 pointer-events-none opacity-[0.10] mix-blend-multiply z-10" 
                 style={{ filter: "url(#paper-grain)" }}
               />
             )}
 
-            {/* Dithering overlay */}
+            {/* Fine paper micro-texture — simulates paper pulp at close range */}
+            {config.paperGrainActive && (
+              <div 
+                className="absolute inset-0 pointer-events-none opacity-[0.06] mix-blend-multiply z-[11]" 
+                style={{ filter: "url(#paper-grain-fine)" }}
+              />
+            )}
+
+            {/* Dithering overlay — e-ink microcapsule simulation */}
             {config.ditheringActive && (
               <div 
-                className={`absolute inset-0 pointer-events-none z-20 opacity-[0.05] ${
+                className={`absolute inset-0 pointer-events-none z-20 ${config.contrastMode === "dark-ink" ? "opacity-[0.06]" : "opacity-[0.09]"} ${
                   config.contrastMode === "dark-ink" ? "grid-dither-dark" : "grid-dither"
                 }`}
               />
             )}
 
-            {/* Ghosting Background Trace Layer */}
+            {/* Ghosting Background Trace Layer — simulates e-ink particle residue */}
             {config.ghostingLevel > 0 && ghostingText && (
               <div 
-                className="absolute inset-0 pointer-events-none select-none overflow-hidden p-6 md:p-12 leading-relaxed z-[2]"
+                className="absolute inset-0 pointer-events-none select-none overflow-hidden z-[2]"
                 style={{
-                  opacity: config.ghostingLevel / 220, // keep shadow extremely gentle
-                  transform: "rotate(-0.8deg) scale(0.99) translate(1px, 2px)",
-                  fontFamily: config.fontFamily === "serif-lora" ? "Lora" : "Inter",
-                  fontSize: `${config.fontSize}px`,
-                  color: config.contrastMode === "dark-ink" ? "#ffffff" : "#000000",
+                  opacity: config.ghostingLevel / 180,
+                  padding: zenFullscreen ? '2rem 5% 2rem 5%' : '1.5rem 3rem',
+                  transform: "rotate(-0.5deg) scale(0.993) translate(2px, 3px)",
+                  fontFamily: config.fontFamily === "serif-lora" ? "Lora" : config.fontFamily === "sans-inter" ? "Inter" : "JetBrains Mono",
+                  fontSize: `${config.fontSize * 0.95}px`,
+                  lineHeight: config.lineHeight,
+                  color: config.contrastMode === "dark-ink" ? "rgba(200,200,200,0.5)" : "rgba(80,80,80,0.4)",
+                  filter: "blur(0.3px)",
                 }}
               >
-                <div className="line-clamp-[22] break-words whitespace-pre-wrap">
-                  {ghostingText.slice(0, 1200)}
+                <div className="break-words whitespace-pre-wrap line-clamp-[30]">
+                  {ghostingText.slice(0, 1800)}
                 </div>
               </div>
             )}
@@ -505,12 +518,20 @@ export default function ReaderScreen({
         </div>
       </div>
 
-      {/* Embedded SVG Filter for Paper Grain */}
-      <svg className="hidden">
-        <filter id="paper-grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" result="noise" />
-          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.12 0" />
-          <feBlend mode="multiply" in="SourceGraphic" in2="noise" />
+      {/* Embedded SVG Filters for Paper Grain — multi-layer for realistic cellulose texture */}
+      <svg className="hidden" aria-hidden="true">
+        <filter id="paper-grain" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" seed="2" result="noise1" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="2" seed="7" result="noise2" />
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.08 0" in="noise1" result="colored1" />
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.05 0" in="noise2" result="colored2" />
+          <feBlend mode="multiply" in="colored1" in2="colored2" result="blended" />
+          <feBlend mode="multiply" in="SourceGraphic" in2="blended" />
+        </filter>
+        <filter id="paper-grain-fine" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.25" numOctaves="3" seed="5" result="micro" />
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.03 0" in="micro" result="microColored" />
+          <feBlend mode="multiply" in="SourceGraphic" in2="microColored" />
         </filter>
       </svg>
 
