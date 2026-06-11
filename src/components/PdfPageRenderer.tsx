@@ -100,6 +100,7 @@ export function PdfPageRenderer({ pdfDocument, pageNum, scale, config }: PdfPage
           border: config.contrastMode === "dark-ink"
             ? "1px solid #2d2e30"
             : "1px solid #dcdbd2",
+          filter: config.grayscaleActive ? "grayscale(100%)" : "none",
         }}
       />
     </div>

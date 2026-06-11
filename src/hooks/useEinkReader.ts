@@ -54,7 +54,19 @@ export function useEinkReader() {
     };
   });
 
-  const currentTheme = uiThemeClasses[config.contrastMode] || uiThemeClasses["warm-sepia"];
+  const baseTheme = uiThemeClasses[config.contrastMode] || uiThemeClasses["warm-sepia"];
+  const currentTheme = { ...baseTheme };
+  if (config.screenProfile === 'amoled' && config.contrastMode === 'dark-ink') {
+    currentTheme.rootBg = "bg-black";
+    currentTheme.headerBg = "bg-black text-[#cfcfcf] border-b border-neutral-900";
+    currentTheme.headerIcon = "bg-black text-[#cfcfcf] border-neutral-900";
+    currentTheme.tabSelected = "bg-neutral-950 text-[#dedede] shadow border border-neutral-800";
+    currentTheme.tabUnselected = "text-neutral-500 hover:text-white hover:bg-neutral-950";
+    currentTheme.loadersBg = "bg-black border-neutral-900";
+    currentTheme.notebookBg = "bg-black border-neutral-900";
+    currentTheme.floatingBtn = "bg-neutral-950 border-neutral-800 hover:bg-neutral-900 text-[#dedede] hover:text-white";
+    currentTheme.select = "bg-black border-neutral-900 text-[#cfcfcf] focus:ring-neutral-800";
+  }
 
   // Flow & Mode tracking loaded from local storage
   const [activeInputMode, setActiveInputMode] = useState<InputMode>(() => {

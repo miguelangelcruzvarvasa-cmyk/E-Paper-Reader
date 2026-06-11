@@ -233,6 +233,8 @@ export default function ReaderScreen({
 
               if (!src) return null;
 
+              const isGrayscaled = config.grayscaleActive && !showColor;
+
               return (
                 <div className="my-6 relative group inline-block w-full select-none">
                   <div className="relative overflow-hidden rounded-xl border border-neutral-300/70 shadow-sm bg-neutral-100/50 max-w-full inline-block">
@@ -241,9 +243,9 @@ export default function ReaderScreen({
                       alt={alt || "Ilustración técnica"}
                       referrerPolicy="no-referrer"
                       className={`max-w-full h-auto max-h-[400px] object-contain block transition-all duration-300 ${
-                        showColor 
-                          ? "grayscale-0 opacity-100" 
-                          : "grayscale opacity-80 group-hover:opacity-95"
+                        isGrayscaled 
+                          ? "grayscale opacity-80 group-hover:opacity-95" 
+                          : "grayscale-0 opacity-100"
                       } ${
                         config.contrastMode === "dark-ink" ? "mix-blend-lighten" : "mix-blend-multiply"
                       }`}
@@ -424,7 +426,6 @@ export default function ReaderScreen({
               contrast(${config.contrastLevel})
               brightness(${0.82 + (config.brightness / 100) * 0.28 - (config.blueLightFilter / 100) * 0.15})
               sepia(${config.blueLightFilter / 100 * 0.55})
-              grayscale(${config.grayscaleActive ? "100%" : "0%"})
             `
           }}
         >

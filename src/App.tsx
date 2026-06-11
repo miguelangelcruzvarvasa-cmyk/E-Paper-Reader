@@ -91,7 +91,6 @@ export default function App() {
           contrast(${config.contrastLevel})
           brightness(${0.82 + (config.brightness / 100) * 0.28 - (config.blueLightFilter / 100) * 0.15})
           sepia(${config.blueLightFilter / 100 * 0.55})
-          grayscale(${config.grayscaleActive ? "100%" : "0%"})
         `
       } : undefined}
     >
