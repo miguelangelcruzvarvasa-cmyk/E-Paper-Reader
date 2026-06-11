@@ -80,7 +80,9 @@ export default function App() {
     handleAiAssist,
     aiLoading,
     aiError,
-    aiAssistantText
+    aiAssistantText,
+    handleNotebookSynthesis,
+    activeReadingMinutes
   } = useEinkReader();
 
   return (
@@ -312,6 +314,8 @@ export default function App() {
             currentTheme={currentTheme}
             zenFullscreen={zenFullscreen}
             onFetchApiStatus={fetchApiStatus}
+            handleNotebookSynthesis={handleNotebookSynthesis}
+            activeReadingMinutes={activeReadingMinutes}
           />
         </main>
       </div>

@@ -38,6 +38,8 @@ interface NotebookPanelProps {
   };
   zenFullscreen: boolean;
   onFetchApiStatus: () => void;
+  handleNotebookSynthesis: () => void;
+  activeReadingMinutes: number;
 }
 
 export default function NotebookPanel({
@@ -63,7 +65,9 @@ export default function NotebookPanel({
   apiStatus,
   currentTheme,
   zenFullscreen,
-  onFetchApiStatus
+  onFetchApiStatus,
+  handleNotebookSynthesis,
+  activeReadingMinutes
 }: NotebookPanelProps) {
   if (zenFullscreen) return null;
 
@@ -120,16 +124,32 @@ export default function NotebookPanel({
             {activeNotebookTab === "notebook" && (
               <div className="flex flex-col gap-2 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between gap-3 border-b border-neutral-300/20 pb-1.5">
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-neutral-500 font-bold">📖 CUADERNO</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-mono tracking-widest text-neutral-500 font-bold">📖 CUADERNO</span>
+                    {activeReadingMinutes > 0 && (
+                      <span className="text-[9px] bg-neutral-100/70 dark:bg-neutral-800 border border-neutral-300/30 px-1.5 py-0.5 rounded text-neutral-500 font-mono">
+                        ⏱️ {activeReadingMinutes}m leídos
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5">
                     {studyNotes.length > 0 && (
-                      <button
-                        onClick={onDownloadNotes}
-                        className="p-1 px-2 bg-neutral-950 text-white hover:bg-neutral-900 rounded text-[10px] font-bold transition cursor-pointer"
-                        title="Descargar apuntes en Markdown (.md)"
-                      >
-                        📥 .md
-                      </button>
+                      <>
+                        <button
+                          onClick={handleNotebookSynthesis}
+                          className="p-1 px-2.5 bg-neutral-900 border border-neutral-700 text-white hover:bg-neutral-850 rounded text-[10px] font-bold transition cursor-pointer flex items-center gap-1"
+                          title="Generar guía de estudio estructurada con IA a partir de todas tus notas"
+                        >
+                          🤖 Sintetizar Apuntes
+                        </button>
+                        <button
+                          onClick={onDownloadNotes}
+                          className="p-1 px-2 bg-neutral-950 text-white hover:bg-neutral-900 rounded text-[10px] font-bold transition cursor-pointer"
+                          title="Descargar apuntes en Markdown (.md)"
+                        >
+                          📥 .md
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={onAddStudyNote}

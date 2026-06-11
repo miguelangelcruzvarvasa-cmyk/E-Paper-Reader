@@ -253,8 +253,30 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
           />
         </div>
 
+        {/* Eye Comfort / Smart Comfort Section */}
+        <div className="flex flex-col gap-3 border-t border-neutral-200/50 pt-3">
+          <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider flex items-center gap-1">
+            <Eye className="w-3 h-3" /> Filtros Oculares & Brillo
+          </span>
+
+          {/* Confort Inteligente Switch */}
+          <label className="flex items-center justify-between text-xs text-neutral-700 cursor-pointer group bg-neutral-100/50 dark:bg-white/5 p-2 rounded-lg border border-neutral-300/10">
+            <div className="flex flex-col text-left">
+              <span className="font-semibold flex items-center gap-1">🤖 Confort Inteligente</span>
+              <span className="text-[9px] text-neutral-400 font-normal">Ajusta brillo/filtro según hora y fatiga</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={config.smartComfortActive}
+              onChange={(e) => onChangeConfig({ smartComfortActive: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="relative w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neutral-800"></div>
+          </label>
+        </div>
+
         {/* Blue Light Filter */}
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 relative">
           <div className="flex justify-between text-xs text-neutral-600">
             <span>🌙 Filtro Luz Azul</span>
             <span className="font-mono font-bold">{config.blueLightFilter}%</span>
@@ -264,15 +286,19 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
             min="0"
             max="100"
             step="5"
+            disabled={config.smartComfortActive}
             value={config.blueLightFilter}
             onChange={(e) => onChangeConfig({ blueLightFilter: parseInt(e.target.value) })}
-            className="w-full accent-amber-600 cursor-pointer"
+            className={`w-full accent-amber-600 cursor-pointer ${config.smartComfortActive ? "opacity-45 cursor-not-allowed" : ""}`}
           />
+          {config.smartComfortActive && (
+            <span className="absolute right-0 top-0 text-[8px] bg-neutral-800 text-white dark:bg-neutral-200 dark:text-neutral-900 px-1 py-0.5 rounded font-mono uppercase scale-90">Auto</span>
+          )}
           <p className="text-[10px] text-neutral-400">Reduce fatiga ocular eliminando luz azul. 80% recomendado.</p>
         </div>
 
         {/* Brightness / Frontlight Slider */}
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 relative">
           <div className="flex justify-between text-xs text-neutral-600">
             <span>💡 Brillo de Pantalla (Frontlight)</span>
             <span className="font-mono font-bold">{config.brightness}%</span>
@@ -282,10 +308,14 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
             min="0"
             max="100"
             step="5"
+            disabled={config.smartComfortActive}
             value={config.brightness}
             onChange={(e) => onChangeConfig({ brightness: parseInt(e.target.value) })}
-            className="w-full accent-neutral-800 cursor-pointer"
+            className={`w-full accent-neutral-800 cursor-pointer ${config.smartComfortActive ? "opacity-45 cursor-not-allowed" : ""}`}
           />
+          {config.smartComfortActive && (
+            <span className="absolute right-0 top-0 text-[8px] bg-neutral-800 text-white dark:bg-neutral-200 dark:text-neutral-900 px-1 py-0.5 rounded font-mono uppercase scale-90">Auto</span>
+          )}
           <p className="text-[10px] text-neutral-400">0% simula papel reflectivo físico sin emisión de luz propia.</p>
         </div>
 

@@ -357,6 +357,15 @@ ${truncatedHtml}`;
       } else if (type === "simplify") {
         prompt = `Reescribe o explica de forma extremadamente sencilla, didáctica y en español con un tono cercano, evitando jerga técnica, el siguiente texto:\n\n"${text}"`;
         systemDef = "Simplificas textos complejos con un lenguaje amigable y comprensible para cualquier persona.";
+      } else if (type === "synthesis") {
+        prompt = `El usuario ha recopilado las siguientes notas y apuntes en su libreta durante la lectura. Analízalas y genera una guía de estudio estructurada en español que contenga:
+1. Un resumen ejecutivo unificado de los temas.
+2. Conceptos clave definidos de forma didáctica.
+3. 3 preguntas de autoevaluación con respuestas ocultas en un bloque desplegable (<details><summary>Ver Respuesta</summary>...</details>) para que el estudiante pueda evaluarse.
+
+Notas del usuario a sintetizar:
+${text}`;
+        systemDef = "Eres un tutor académico de alto rendimiento. Creas guías de estudio, síntesis educativas y exámenes de autoevaluación premium y ordenados a partir de las notas de un estudiante.";
       } else {
         prompt = `Explica brevemente los conceptos clave del siguiente texto en un párrafo corto y claro:\n\n"${text}"`;
         systemDef = "Das explicaciones breves, sabias y pedagógicas sobre cualquier fragmento de lectura.";

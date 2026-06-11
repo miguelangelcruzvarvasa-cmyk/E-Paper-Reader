@@ -20,6 +20,7 @@ export interface ReaderConfig {
   ultraDim: boolean;
   textAlignment: "left" | "justify";
   refreshRate: number;
+  smartComfortActive: boolean; // Automates brightness/warmth based on environment/time/fatigue
 }
 
 export type InputMode = "paste" | "web" | "pdf";
