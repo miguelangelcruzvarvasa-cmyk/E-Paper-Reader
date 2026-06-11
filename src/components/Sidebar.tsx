@@ -88,10 +88,10 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
           🕶️ Confort Visual Kindle
         </span>
         <p className="text-[10px] text-neutral-600 dark:text-neutral-350 leading-normal">
-          Apaga el brillo de pantalla y reduce la luz azul al 100% para emular papel físico.
+          Apaga el brillo de pantalla, activa la ultra-atenuación y reduce la luz azul al 100%.
         </p>
         <button
-          onClick={() => onChangeConfig({ brightness: 0, blueLightFilter: 100, applyFilterGlobally: true })}
+          onClick={() => onChangeConfig({ brightness: 0, blueLightFilter: 100, applyFilterGlobally: true, ultraDim: true, screenProfile: 'high_brightness' })}
           className="w-full py-1.5 px-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md transition text-center font-bold text-[10px] shadow-sm select-none cursor-pointer uppercase tracking-wider"
         >
           Apagar Brillo y Luz Azul
@@ -117,6 +117,57 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
               <span className="text-xs select-none">{opt.name}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Perfil de Pantalla */}
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1 opacity-70">
+          <Tablet className="w-3.5 h-3.5" /> Perfil de Pantalla
+        </label>
+        <div className="flex flex-col gap-1 mt-1">
+          <button
+            onClick={() => onChangeConfig({ screenProfile: 'standard' })}
+            className={`p-2 rounded-lg border text-left flex justify-between items-center transition ${
+              config.screenProfile === 'standard'
+                ? currentTheme.buttonSelected
+                : currentTheme.buttonUnselected
+            }`}
+          >
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold">Pantalla Estándar (LCD/IPS)</span>
+              <span className="text-[9px] opacity-70">Filtro normal y brillo estándar</span>
+            </div>
+            {config.screenProfile === 'standard' && <span className="text-xs">✓</span>}
+          </button>
+          <button
+            onClick={() => onChangeConfig({ screenProfile: 'amoled' })}
+            className={`p-2 rounded-lg border text-left flex justify-between items-center transition ${
+              config.screenProfile === 'amoled'
+                ? currentTheme.buttonSelected
+                : currentTheme.buttonUnselected
+            }`}
+          >
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold">OLED / AMOLED (Negro Puro)</span>
+              <span className="text-[9px] opacity-70">Apaga píxeles en modo oscuro</span>
+            </div>
+            {config.screenProfile === 'amoled' && <span className="text-xs">✓</span>}
+          </button>
+          <button
+            onClick={() => onChangeConfig({ screenProfile: 'high_brightness' })}
+            className={`p-2 rounded-lg border text-left flex justify-between items-center transition ${
+              config.screenProfile === 'high_brightness'
+                ? currentTheme.buttonSelected
+                : currentTheme.buttonUnselected
+            }`}
+          >
+            <div className="flex flex-col">
+              <span className="text-[11px] font-semibold">Alto Brillo (Huawei/Premium)</span>
+              <span className="text-[9px] opacity-70">Curva de atenuación agresiva</span>
+            </div>
+            {config.screenProfile === 'high_brightness' && <span className="text-xs">✓</span>}
+          </button>
         </div>
       </div>
 
@@ -248,6 +299,21 @@ export default function Sidebar({ config, onChangeConfig, onRefreshTrigger }: Si
             type="checkbox"
             checked={config.applyFilterGlobally}
             onChange={(e) => onChangeConfig({ applyFilterGlobally: e.target.checked })}
+            className="sr-only peer"
+          />
+          <div className="relative w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neutral-800"></div>
+        </label>
+
+        {/* Ultra-Atenuacion (Filtro Agresivo) */}
+        <label className="flex items-center justify-between text-xs text-neutral-700 cursor-pointer group pt-1">
+          <div className="flex flex-col">
+            <span>Ultra-Atenuación (Capa Oscura)</span>
+            <span className="text-[9px] text-neutral-400 font-normal">Para pantallas de alto brillo / noche</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={config.ultraDim}
+            onChange={(e) => onChangeConfig({ ultraDim: e.target.checked })}
             className="sr-only peer"
           />
           <div className="relative w-9 h-5 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-neutral-800"></div>

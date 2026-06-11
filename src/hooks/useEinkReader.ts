@@ -23,6 +23,8 @@ export function useEinkReader() {
           blueLightFilter: 80,
           brightness: 60,
           applyFilterGlobally: true,
+          screenProfile: "standard",
+          ultraDim: false,
           textAlignment: "justify",
           refreshRate: 3,
           ...parsed,
@@ -45,6 +47,8 @@ export function useEinkReader() {
       blueLightFilter: 80,
       brightness: 60,
       applyFilterGlobally: true,
+      screenProfile: "standard",
+      ultraDim: false,
       textAlignment: "justify",
       refreshRate: 3,
     };

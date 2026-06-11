@@ -342,6 +342,14 @@ export default function App() {
         page={activeInputMode === "pdf" ? pdfCurrentPage : textCurrentPage}
         onSaveNote={handleSaveStudyNote}
       />
+
+      {/* Ultra-Atenuación Overlay (Software Dimmer) */}
+      {config.ultraDim && (
+        <div 
+          className="fixed inset-0 z-[9999] pointer-events-none bg-black" 
+          style={{ opacity: 0.35 }}
+        />
+      )}
     </div>
   );
 }

@@ -180,7 +180,12 @@ export default function ReaderScreen({
     "mono-jetbrains": "font-mono tracking-tighter text-sm leading-loose"
   };
 
-  const selectedContrast = contrastClasses[config.contrastMode];
+  const baseContrast = contrastClasses[config.contrastMode];
+  const selectedContrast = { ...baseContrast };
+  if (config.screenProfile === 'amoled' && config.contrastMode === 'dark-ink') {
+    selectedContrast.container = "bg-black";
+    selectedContrast.paper = "bg-black border-neutral-900 text-[#cdcdcd]";
+  }
   const selectedFont = fontClasses[config.fontFamily];
 
   // Check which content page to output

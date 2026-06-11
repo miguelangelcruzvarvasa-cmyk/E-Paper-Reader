@@ -16,6 +16,8 @@ export interface ReaderConfig {
   blueLightFilter: number; // 0-100, higher = warmer / less blue light
   brightness: number; // 0-100, simulated screen glow / frontlight
   applyFilterGlobally: boolean; // Apply filter to entire application window or just paper sheet
+  screenProfile: 'standard' | 'amoled' | 'high_brightness';
+  ultraDim: boolean;
   textAlignment: "left" | "justify";
   refreshRate: number;
 }
