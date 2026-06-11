@@ -402,29 +402,33 @@ export default function ReaderScreen({
       </div>
 
       {/* Reader Chassis (Device frame or pure sheet) */}
-      <div className={`w-full flex-1 flex flex-col items-center justify-center relative ${zenFullscreen ? '' : 'max-w-3xl mx-auto'}`}>
+      <div className={`w-full flex-1 flex flex-col items-center justify-center relative min-h-0 ${zenFullscreen ? 'h-full' : 'max-w-3xl mx-auto'}`}>
         <div 
-          className={`w-full transition-all duration-300 relative ${
+          className={`w-full transition-all duration-300 relative flex flex-col min-h-0 ${
+            zenFullscreen 
+              ? "flex-1" 
+              : "h-[500px] md:h-[640px] max-h-full"
+          } ${
             config.bezelModeActive 
               ? "border-[22px] md:border-[32px] border-neutral-800 rounded-[28px] md:rounded-[40px] shadow-2xl relative" 
               : zenFullscreen ? "" : "border rounded-xl shadow-lg border-neutral-300/40"
           }`}
-          style={{ width: "100%" }}
+          style={{ 
+            width: "100%",
+            filter: config.applyFilterGlobally ? "none" : `
+              contrast(${config.contrastLevel})
+              brightness(${0.82 + (config.brightness / 100) * 0.28 - (config.blueLightFilter / 100) * 0.15})
+              sepia(${config.blueLightFilter / 100 * 0.55})
+              grayscale(${config.grayscaleActive ? "100%" : "0%"})
+            `
+          }}
         >
           {/* Main Paper Sheet */}
           <div 
             id="reader-paper-sheet"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
-            className={`w-full ${zenFullscreen ? 'min-h-screen' : 'min-h-[500px] md:min-h-[640px]'} ${zenFullscreen ? 'px-4 sm:px-8 md:px-16 lg:px-24 py-6 md:py-10' : 'p-6 md:p-12'} pb-16 flex flex-col justify-between border relative overflow-y-auto select-text ${selectedContrast.paper} reading-sheet`}
-            style={{
-              filter: `
-                contrast(${config.contrastLevel})
-                brightness(${1.0 - (config.blueLightFilter / 250)})
-                sepia(${config.blueLightFilter / 100 * 0.5})
-                grayscale(${config.grayscaleActive && contentType !== "pdf" ? "100%" : "0%"})
-              `
-            }}
+            className={`w-full h-full ${zenFullscreen ? 'px-4 sm:px-8 md:px-16 lg:px-24 py-6 md:py-10' : 'p-6 md:p-12'} pb-16 flex flex-col justify-between border relative overflow-y-auto select-text ${selectedContrast.paper} reading-sheet`}
           >
             {/* SVG Paper texture layer — coarse cellulose fiber */}
             {config.paperGrainActive && (
@@ -580,6 +584,12 @@ export default function ReaderScreen({
                   <li><strong>Ruido Fractal de Textura:</strong> Mitiga la radiación directa emulando el reflejo difuso de la tinta física sobre celulosa.</li>
                   <li><strong>Dithering Electroporético:</strong> Suaviza el contorno del renderizado sub-pixel convirtiéndolo en microesferas de carbón.</li>
                 </ul>
+              </div>
+              <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-lg flex flex-col gap-1 text-[11px] text-amber-950 dark:text-neutral-800">
+                <p className="font-bold flex items-center gap-1 text-xs">🛡️ Configuración de Confort Visual Activa:</p>
+                <p>• <strong>Brillo Frontlight:</strong> {config.brightness === 0 ? "Apagado (0% Emisión, Papel Reflectivo Puro)" : `${config.brightness}%`}</p>
+                <p>• <strong>Filtro Luz Azul:</strong> {config.blueLightFilter}% ({config.blueLightFilter > 70 ? "Cálido Noche" : "Tono Estándar"})</p>
+                <p>• <strong>Protección:</strong> {config.applyFilterGlobally ? "100% de la Pantalla (Filtro Global Activo)" : "Solo área del papel"}</p>
               </div>
               <p className="text-xs text-neutral-400 italic">
                 *Nota: Para un efecto óptimo, lee en ambientes bien iluminados y reduce el brillo de luz de fondo físico de tu monitor.

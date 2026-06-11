@@ -14,6 +14,8 @@ export interface ReaderConfig {
   ghostingLevel: number;
   bezelModeActive: boolean;
   blueLightFilter: number; // 0-100, higher = warmer / less blue light
+  brightness: number; // 0-100, simulated screen glow / frontlight
+  applyFilterGlobally: boolean; // Apply filter to entire application window or just paper sheet
   textAlignment: "left" | "justify";
   refreshRate: number;
 }

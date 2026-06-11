@@ -1,15 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
-/* Full viewport reading mode */
-html, body, #root {
-  height: 100%;
+/* Full viewport reading mode — fixed layout, internal scroll only */
+html, body {
   margin: 0;
   padding: 0;
+  height: 100%;
+  /* Use dynamic viewport height on mobile (avoids address bar issues) */
+  height: 100dvh;
   overflow: hidden;
-  /* Prevent pull-to-refresh and overscroll on mobile */
+  position: fixed;
+  width: 100%;
   overscroll-behavior: none;
-  -webkit-overflow-scrolling: auto;
+}
+
+#root {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 /* Safe area for notched phones */
@@ -160,5 +168,14 @@ button, select, input, textarea, a {
   margin-left: 0.5em;
   font-style: italic;
   opacity: 0.9;
+}
+
+/* Hide scrollbars globally for e-paper comfort and immersion */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+}
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera and Webkit */
 }
 

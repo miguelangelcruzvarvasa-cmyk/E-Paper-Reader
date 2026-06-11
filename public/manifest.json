@@ -1,0 +1,17 @@
+{
+  "short_name": "Tinta Papel",
+  "name": "Tinta Papel E-Ink — Lector de Confort Visual",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ecebe6",
+  "theme_color": "#1c1d1f",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
